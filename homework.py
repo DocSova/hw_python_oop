@@ -2,7 +2,7 @@
 from dataclasses import asdict, dataclass
 
 
-@dataclass(init=True, repr=False, eq=False)
+@dataclass(repr=False, eq=False)
 class InfoMessage:
     """Информационное сообщение о тренировке."""
 
@@ -22,6 +22,19 @@ class InfoMessage:
     def get_message(self) -> str:
         """Возвращает форматированную строку."""
         return self.INFO_MESSAGE.format(**asdict(self))
+
+
+@dataclass(repr=False, eq=False)
+class ErrorMessage:
+    """Информационное сообщение об ошибке при обработке тренировки."""
+
+    ERROR_MESSAGE = ('Не удалось обработать тренировку! {error_text}')
+
+    error_text: str
+
+    def get_message(self) -> str:
+        """Возвращает форматированную строку."""
+        return self.ERROR_MESSAGE.format(**asdict(self))
 
 
 class Training:
@@ -137,22 +150,9 @@ TYPES_OF_PACKAGES: dict[str, type[Training]] = {
     'WLK': SportsWalking}
 
 
-def read_package(workout_type: str, data: list) -> type[Training]:
+def read_package(workout_type: str, data: list) -> Training:
     """Прочитать данные полученные от датчиков."""
-    return TYPES_OF_PACKAGES.get(workout_type, Training)(*data)
-
-
-def validate_package(workout_type: str, data: list) -> bool:
-    """Проверить данные полученные от датчиков на валидность."""
-    # Не смог придумать ничего лучше этой функции, но я старался
-
-    if (workout_type not in TYPES_OF_PACKAGES):
-        print("Не удалось обработать тренировку, неверный тип!")
-        return False
-    if (len(data) < 3):
-        print("Не удалось обработать тренировку, недостаточно данных!")
-        return False
-    return True
+    return TYPES_OF_PACKAGES.get(workout_type)(*data)
 
 
 def main(training: type[Training]) -> None:
@@ -170,6 +170,8 @@ if __name__ == '__main__':
     ]
 
     for workout_type, data in packages:
-        if (validate_package(workout_type, data)):
-            training: type[Training] = read_package(workout_type, data)
+        try:
+            training: Training = read_package(workout_type, data)
             main(training)
+        except TypeError as error_text:
+            print(ErrorMessage(error_text).get_message())
