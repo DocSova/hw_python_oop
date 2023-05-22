@@ -1,10 +1,17 @@
 """Домашняя работа Яндекс Практикума."""
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
-@dataclass
+@dataclass(init=True, repr=False, eq=False)
 class InfoMessage:
     """Информационное сообщение о тренировке."""
+
+    INFO_MESSAGE = (
+        'Тип тренировки: {training_type}; '
+        'Длительность: {duration:.3f} ч.; '
+        'Дистанция: {distance:.3f} км; '
+        'Ср. скорость: {speed:.3f} км/ч; '
+        'Потрачено ккал: {calories:.3f}.')
 
     training_type: str
     duration: float
@@ -14,13 +21,7 @@ class InfoMessage:
 
     def get_message(self) -> str:
         """Возвращает форматированную строку."""
-        formatted_message = (f'Тип тренировки: {self.training_type}; '
-                             f'Длительность: {self.duration:.3f} ч.; '
-                             f'Дистанция: {self.distance:.3f} км; '
-                             f'Ср. скорость: {self.speed:.3f} км/ч; '
-                             f'Потрачено ккал: {self.calories:.3f}.')
-
-        return formatted_message
+        return self.INFO_MESSAGE.format(**asdict(self))
 
 
 class Training:
@@ -130,32 +131,45 @@ class Swimming(Training):
                 * self.CALORIES_MEAN__SHIFT * self.weight * self.duration)
 
 
-TYPES_OF_PACKAGES: dict[str, Training] = {
+TYPES_OF_PACKAGES: dict[str, type[Training]] = {
     'SWM': Swimming,
     'RUN': Running,
     'WLK': SportsWalking}
 
 
-def read_package(workout_type: str, data: list) -> Training:
+def read_package(workout_type: str, data: list) -> type[Training]:
     """Прочитать данные полученные от датчиков."""
+    return TYPES_OF_PACKAGES.get(workout_type, Training)(*data)
+
+
+def validate_package(workout_type: str, data: list) -> bool:
+    """Проверить данные полученные от датчиков на валидность."""
+    # Не смог придумать ничего лучше этой функции, но я старался
+
     if (workout_type not in TYPES_OF_PACKAGES):
-        workout_type = "RUN"
+        print("Не удалось обработать тренировку, неверный тип!")
+        return False
+    if (len(data) < 3):
+        print("Не удалось обработать тренировку, недостаточно данных!")
+        return False
+    return True
 
-    return TYPES_OF_PACKAGES[workout_type](*data)
 
-
-def main(training: Training) -> None:
+def main(training: type[Training]) -> None:
     """Главная функция."""
     print(training.show_training_info().get_message())
 
 
 if __name__ == '__main__':
-    packages: list[tuple] = [
+    packages: list[tuple[str, list[int]]] = [
         ('SWM', [720, 1, 80, 25, 40]),
         ('RUN', [15000, 1, 75]),
+        ('RN', [15000, 1, 75]),
+        ('RUN', [15000, 1]),
         ('WLK', [9000, 1, 75, 180]),
     ]
 
     for workout_type, data in packages:
-        training: Training = read_package(workout_type, data)
-        main(training)
+        if (validate_package(workout_type, data)):
+            training: type[Training] = read_package(workout_type, data)
+            main(training)
